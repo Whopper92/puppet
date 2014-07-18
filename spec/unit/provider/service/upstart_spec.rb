@@ -22,6 +22,20 @@ describe Puppet::Type.type(:service).provider(:upstart) do
     provider_class.stubs(:which).with("/sbin/initctl").returns("/sbin/initctl")
   end
 
+  it "should be the default provider on rhel6" do
+    Facter.expects(:value).with(:operatingsystem).once
+    Facter.expects(:value).with(:osfamily).at_least_once.returns(:redhat)
+    Facter.expects(:value).with(:operatingsystemmajrelease).returns("6")
+    described_class.default?.should be_true
+  end
+
+  it "should not be the default provider on rhel7" do
+    Facter.expects(:value).with(:operatingsystem).once
+    Facter.expects(:value).with(:osfamily).at_least_once.returns(:redhat)
+    Facter.expects(:value).with(:operatingsystemmajrelease).returns("7")
+    described_class.default?.should_not be_true
+  end
+
   describe "excluding services" do
     it "ignores tty and serial on Redhat systems" do
       Facter.stubs(:value).with(:osfamily).returns('RedHat')

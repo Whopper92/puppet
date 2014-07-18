@@ -17,6 +17,7 @@ Puppet::Type.type(:service).provide :upstart, :parent => :debian do
   ]
 
   defaultfor :operatingsystem => :ubuntu
+  defaultfor :osfamily => :redhat, :operatingsystemmajrelease => "6"
 
   commands :start   => "/sbin/start",
            :stop    => "/sbin/stop",

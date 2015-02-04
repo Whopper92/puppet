@@ -345,7 +345,9 @@ def prepare_installation
     destdir = ''
   end
 
+  puppetdir = join(destdir, puppetdir)
   configdir = join(destdir, configdir)
+  codedir = join(destdir, codedir)
   vardir = join(destdir, vardir)
   rundir = join(destdir, rundir)
   logdir = join(destdir, logdir)
@@ -353,7 +355,9 @@ def prepare_installation
   mandir = join(destdir, mandir)
   sitelibdir = join(destdir, sitelibdir)
 
+  FileUtils.makedirs(puppetdir)
   FileUtils.makedirs(configdir) if InstallOptions.configs
+  FileUtils.makedirs(codedir)
   FileUtils.makedirs(bindir)
   FileUtils.makedirs(mandir)
   FileUtils.makedirs(sitelibdir)
@@ -362,6 +366,8 @@ def prepare_installation
   FileUtils.makedirs(logdir)
 
   InstallOptions.site_dir = sitelibdir
+  InstallOptions.puppetdir = puppetdir
+  InstallOptions.codedir = codedir
   InstallOptions.config_dir = configdir
   InstallOptions.var_dir = vardir
   InstallOptions.run_dir = rundir

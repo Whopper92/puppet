@@ -39,7 +39,7 @@ module Puppet
       end
 
       def conf_dir
-        "$puppetdir/config"
+        "#{puppet_dir}/config"
       end
 
       private

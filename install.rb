@@ -284,6 +284,14 @@ def prepare_installation
     configdir = File.join(puppetdir, "config")
   end
 
+  if not InstallOptions.codedir.nil?
+    codedir = InstallOptions.codedir
+  elsif $operatingsystem == "windows"
+    codedir = File.join(Dir::COMMON_APPDATA, "PuppetLabs", "puppet", "etc", "code")
+  else
+    codedir = File.join(puppetdir, "code")
+  end
+
   if not InstallOptions.vardir.nil?
     vardir = InstallOptions.vardir
   elsif $operatingsystem == "windows"

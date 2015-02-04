@@ -199,8 +199,14 @@ def prepare_installation
     opts.on('--destdir[=OPTIONAL]', 'Installation prefix for all targets', 'Default essentially /') do |destdir|
       InstallOptions.destdir = destdir
     end
-    opts.on('--configdir[=OPTIONAL]', 'Installation directory for config files', 'Default /etc/puppetlabs/agent') do |configdir|
+    opts.on('--puppetdir[=OPTIONAL]', 'Installation directory for config and code files', 'Default /etc/puppetlabs/agent') do |puppetdir|
+      InstallOptions.puppetdir = puppetdir
+    end
+    opts.on('--configdir[=OPTIONAL]', 'Installation directory for config files', 'Default /etc/puppetlabs/agent/config') do |configdir|
       InstallOptions.configdir = configdir
+    end
+    opts.on('--codedir[=OPTIONAL]', 'Installation directory for code files', 'Default /etc/puppetlabs/agent/code') do |codedir|
+      InstallOptions.codedir = codedir
     end
     opts.on('--vardir[=OPTIONAL]', 'Installation directory for var files', 'Default /opt/puppetlabs/agent/cache') do |vardir|
       InstallOptions.vardir = vardir
@@ -262,12 +268,20 @@ def prepare_installation
     end
   end
 
+  if not InstallOptions.puppetdir.nil?
+    puppetdir = InstallOptions.puppetdir
+  elsif $operatingsystem == "windows"
+    puppetdir = File.join(Dir::COMMON_APPDATA, "PuppetLabs", "puppet", "etc")
+  else
+    puppetdir = "/etc/puppetlabs/agent"
+  end
+
   if not InstallOptions.configdir.nil?
     configdir = InstallOptions.configdir
   elsif $operatingsystem == "windows"
-    configdir = File.join(Dir::COMMON_APPDATA, "PuppetLabs", "puppet", "etc")
+    configdir = File.join(Dir::COMMON_APPDATA, "PuppetLabs", "puppet", "etc", "config")
   else
-    configdir = "/etc/puppetlabs/agent"
+    configdir = File.join(puppetdir, "config")
   end
 
   if not InstallOptions.vardir.nil?

@@ -199,7 +199,7 @@ def prepare_installation
     opts.on('--destdir[=OPTIONAL]', 'Installation prefix for all targets', 'Default essentially /') do |destdir|
       InstallOptions.destdir = destdir
     end
-    opts.on('--configdir[=OPTIONAL]', 'Installation directory for config files', 'Default /etc/puppetlabs/agent') do |configdir|
+    opts.on('--configdir[=OPTIONAL]', 'Installation directory for config files', 'Default /etc/puppetlabs/agent/config') do |configdir|
       InstallOptions.configdir = configdir
     end
     opts.on('--vardir[=OPTIONAL]', 'Installation directory for var files', 'Default /opt/puppetlabs/agent/cache') do |vardir|
@@ -211,7 +211,7 @@ def prepare_installation
     opts.on('--logdir[=OPTIONAL]', 'Installation directory for log files', 'Default /var/log/puppetlabs/agent') do |logdir|
       InstallOptions.logdir = logdir
     end
-    opts.on('--bindir[=OPTIONAL]', 'Installation directory for binaries', 'overrides RbConfig::CONFIG["bindir"]') do |bindir|
+    opts.on('--bindir[=OPTIONAL]', 'Installation directory for binaries', 'Default /opt/puppetlabs/agent/bin') do |bindir|
       InstallOptions.bindir = bindir
     end
     opts.on('--ruby[=OPTIONAL]', 'Ruby interpreter to use with installation', 'overrides ruby used to call install.rb') do |ruby|
@@ -250,7 +250,7 @@ def prepare_installation
   # which is not generally where people expect executables to be installed
   # These settings are appropriate defaults for all OS X versions.
   if RUBY_PLATFORM =~ /^universal-darwin[\d\.]+$/
-    RbConfig::CONFIG['bindir'] = "/usr/bin"
+    RbConfig::CONFIG['bindir'] = "/opt/puppetlabs/agent/bin"
   end
 
   if $operatingsystem == "windows"
@@ -267,7 +267,7 @@ def prepare_installation
   elsif $operatingsystem == "windows"
     configdir = File.join(Dir::COMMON_APPDATA, "PuppetLabs", "puppet", "etc")
   else
-    configdir = "/etc/puppetlabs/agent"
+    configdir = "/etc/puppetlabs/agent/config"
   end
 
   if not InstallOptions.vardir.nil?
@@ -296,8 +296,10 @@ def prepare_installation
 
   if not InstallOptions.bindir.nil?
     bindir = InstallOptions.bindir
-  else
+  elsif $operatingsystem == "windows"
     bindir = RbConfig::CONFIG['bindir']
+  else
+    bindir = File.join("/", "opt", "puppetlabs", "agent", "bin")
   end
 
   if not InstallOptions.sitelibdir.nil?

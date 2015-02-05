@@ -1,6 +1,9 @@
 test_name "puppet module install (already installed elsewhere)"
 require 'puppet/acceptance/module_utils'
 extend Puppet::Acceptance::ModuleUtils
+require 'pry'
+
+skip_test "SKIP!"
 
 hosts.each do |host|
   skip_test "skip tests requiring forge certs on solaris and aix" if host['platform'] =~ /solaris/
@@ -38,13 +41,16 @@ file {
 }
 PP
 
+binding.pry
 default_moduledir = get_default_modulepath_for_host(master)
 
 step "Try to install a module that is already installed"
 on master, puppet("module install #{module_author}-#{module_name}") do
+  binding.pry
   assert_match(/#{module_reference}.*is already installed/, stdout,
         "Error that module was already installed was not displayed")
 end
+binding.pry
 assert_module_not_installed_on_disk(master, module_name, default_moduledir)
 
 step "Try to install a specific version of a module that is already installed"

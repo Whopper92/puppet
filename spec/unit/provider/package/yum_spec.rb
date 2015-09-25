@@ -22,7 +22,7 @@ describe provider_class do
   end
 
   before do
-    provider.stubs(:yum).returns 'yum'
+    provider.stubs(:cmd).returns 'yum'
     provider.stubs(:rpm).returns 'rpm'
     provider.stubs(:get).with(:version).returns '1'
     provider.stubs(:get).with(:release).returns '1'
@@ -177,82 +177,108 @@ describe provider_class do
   end
 
   describe 'when installing' do
-    before(:each) do
-      Puppet::Util.stubs(:which).with("rpm").returns("/bin/rpm")
-      provider.stubs(:which).with("rpm").returns("/bin/rpm")
-      Puppet::Util::Execution.expects(:execute).with(["/bin/rpm", "--version"], {:combine => true, :custom_environment => {}, :failonfail => true}).returns("4.10.1\n").at_most_once
-      Facter.stubs(:value).with(:operatingsystemmajrelease).returns('6')
-    end
+    context 'on systems which use yum' do
+      before do
+        described_class.stubs(:command).with(:cmd).returns '/usr/bin/yum'
+      end
 
-    it 'should call yum install for :installed' do
-      resource.stubs(:should).with(:ensure).returns :installed
-      provider.expects(:yum).with('-d', '0', '-e', '0', '-y', :install, name)
-      provider.install
-    end
-
-    context 'on el-5' do
       before(:each) do
-        Facter.stubs(:value).with(:operatingsystemmajrelease).returns('5')
+        Puppet::Util.stubs(:which).with("rpm").returns("/bin/rpm")
+        provider.stubs(:which).with("rpm").returns("/bin/rpm")
+        Puppet::Util::Execution.expects(:execute).with(["/bin/rpm", "--version"], {:combine => true, :custom_environment => {}, :failonfail => true}).returns("4.10.1\n").at_most_once
+        Facter.stubs(:value).with(:operatingsystemmajrelease).returns('6')
       end
 
-      it 'should catch yum install failures when status code is wrong' do
+      it 'should call yum install for :installed' do
         resource.stubs(:should).with(:ensure).returns :installed
-        provider.expects(:yum).with('-e', '0', '-y', :install, name).returns("No package #{name} available.")
-        expect {
-          provider.install
-        }.to raise_error(Puppet::Error, "Could not find package #{name}")
+        provider.expects(:cmd).with('-d', '0', '-e', '0', '-y', :install, name)
+        provider.install
+      end
+
+      context 'on el-5' do
+        before(:each) do
+          Facter.stubs(:value).with(:operatingsystemmajrelease).returns('5')
+        end
+
+        it 'should catch yum install failures when status code is wrong' do
+          resource.stubs(:should).with(:ensure).returns :installed
+          provider.expects(:cmd).with('-e', '0', '-y', :install, name).returns("No package #{name} available.")
+          expect {
+            provider.install
+          }.to raise_error(Puppet::Error, "Could not find package #{name}")
+        end
+      end
+
+      it 'should use :install to update' do
+        provider.expects(:install)
+        provider.update
+      end
+
+      it 'should be able to set version' do
+        version = '1.2'
+        resource[:ensure] = version
+        provider.expects(:cmd).with('-d', '0', '-e', '0', '-y', :install, "#{name}-#{version}")
+        provider.stubs(:query).returns :ensure => version
+        provider.install
+      end
+
+      it 'should handle partial versions specified' do
+        version = '1.3.4'
+        resource[:ensure] = version
+        provider.stubs(:query).returns :ensure => '1.3.4-1.el6'
+        provider.install
+      end
+
+      it 'should be able to downgrade' do
+        current_version = '1.2'
+        version = '1.0'
+        resource[:ensure] = '1.0'
+        provider.expects(:cmd).with('-d', '0', '-e', '0', '-y', :downgrade, "#{name}-#{version}")
+        provider.stubs(:query).returns(:ensure => current_version).then.returns(:ensure => version)
+        provider.install
+      end
+
+      it 'should accept install options' do
+        resource[:ensure] = :installed
+        resource[:install_options] = ['-t', {'-x' => 'expackage'}]
+
+        provider.expects(:cmd).with('-d', '0', '-e', '0', '-y', ['-t', '-x=expackage'], :install, name)
+        provider.install
+      end
+
+      it 'allow virtual packages' do
+        resource[:ensure] = :installed
+        resource[:allow_virtual] = true
+        provider.expects(:cmd).with('-d', '0', '-e', '0', '-y', :list, name).never
+        provider.expects(:cmd).with('-d', '0', '-e', '0', '-y', :install, name)
+        provider.install
       end
     end
 
-    it 'should use :install to update' do
-      provider.expects(:install)
-      provider.update
-    end
+    context 'on systems which use dnf' do
+      before do
+        described_class.stubs(:command).with(:cmd).returns '/usr/bin/dnf'
+      end
 
-    it 'should be able to set version' do
-      version = '1.2'
-      resource[:ensure] = version
-      provider.expects(:yum).with('-d', '0', '-e', '0', '-y', :install, "#{name}-#{version}")
-      provider.stubs(:query).returns :ensure => version
-      provider.install
-    end
+      before(:each) do
+        Puppet::Util.stubs(:which).with("rpm").returns("/bin/rpm")
+        provider.stubs(:which).with("rpm").returns("/bin/rpm")
+        Puppet::Util::Execution.expects(:execute).with(["/bin/rpm", "--version"], {:combine => true, :custom_environment => {}, :failonfail => true}).returns("4.10.1\n").at_most_once
+        Facter.stubs(:value).with(:operatingsystem).returns('fedora')
+        Facter.stubs(:value).with(:operatingsystemmajrelease).returns('22')
+      end
 
-    it 'should handle partial versions specified' do
-      version = '1.3.4'
-      resource[:ensure] = version
-      provider.stubs(:query).returns :ensure => '1.3.4-1.el6'
-      provider.install
-    end
-
-    it 'should be able to downgrade' do
-      current_version = '1.2'
-      version = '1.0'
-      resource[:ensure] = '1.0'
-      provider.expects(:yum).with('-d', '0', '-e', '0', '-y', :downgrade, "#{name}-#{version}")
-      provider.stubs(:query).returns(:ensure => current_version).then.returns(:ensure => version)
-      provider.install
-    end
-
-    it 'should accept install options' do
-      resource[:ensure] = :installed
-      resource[:install_options] = ['-t', {'-x' => 'expackage'}]
-
-      provider.expects(:yum).with('-d', '0', '-e', '0', '-y', ['-t', '-x=expackage'], :install, name)
-      provider.install
-    end
-
-    it 'allow virtual packages' do
-      resource[:ensure] = :installed
-      resource[:allow_virtual] = true
-      provider.expects(:yum).with('-d', '0', '-e', '0', '-y', :list, name).never
-      provider.expects(:yum).with('-d', '0', '-e', '0', '-y', :install, name)
-      provider.install
+      it 'should call dnf install for :installed with an error level setting of 1' do
+        resource.stubs(:should).with(:ensure).returns :installed
+        provider.expects(:cmd).with('-d', '0', '-e', '1', '-y', :install, name)
+        provider.install
+      end
     end
   end
 
   describe 'when uninstalling' do
     it 'should use erase to purge' do
-      provider.expects(:yum).with('-y', :erase, name)
+      provider.expects(:cmd).with('-y', :erase, name)
       provider.purge
     end
   end
@@ -398,7 +424,7 @@ describe provider_class do
 
   describe "executing yum check-update" do
     before do
-      described_class.stubs(:command).with(:yum).returns '/usr/bin/yum'
+      described_class.stubs(:command).with(:cmd).returns '/usr/bin/yum'
     end
 
     it "passes repos to enable to 'yum check-update'" do

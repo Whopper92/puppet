@@ -16,8 +16,10 @@ Puppet::Type.type(:service).provide :init, :parent => :base do
     end
   end
 
+  # Debian and Ubuntu should use the Debian provider.
   confine :true => begin
-     !(Facter.value(:osfamily).downcase == 'debian')
+     os = Facter.value(:operatingsystem).downcase
+     !(os == 'debian' || os == 'ubuntu')
   end
 
   # We can't confine this here, because the init path can be overridden.

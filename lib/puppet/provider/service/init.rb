@@ -16,6 +16,10 @@ Puppet::Type.type(:service).provide :init, :parent => :base do
     end
   end
 
+  confine :true => begin
+     !(Facter.value(:osfamily).downcase == 'debian')
+  end
+
   # We can't confine this here, because the init path can be overridden.
   #confine :exists => defpath
 

@@ -1,3 +1,5 @@
+require 'timeout'
+
 # AIX System Resource controller (SRC)
 Puppet::Type.type(:service).provide :src, :parent => :base do
 
@@ -83,6 +85,20 @@ Puppet::Type.type(:service).provide :src, :parent => :base do
             execute([command(:refresh), "-s", @resource[:name]])
           else
             self.stop
+
+            # Wait for the service to stop asynchronously before starting it again.
+            begin
+              Timeout.timeout(30) do
+                loop do
+                  status = self.status
+                  break if status == :stopped
+                  sleep(2)
+                end
+              end
+            rescue Timeout::Error
+              Puppet.warning("Timed out waiting for #{@resource[:name]} to stop")
+            end
+
             self.start
           end
           return :true

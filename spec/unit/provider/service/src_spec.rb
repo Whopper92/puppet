@@ -37,7 +37,7 @@ describe provider_class do
   end
 
   describe ".instances" do
-    it "should has a .instances method" do
+    it "should have a .instances method" do
       expect(provider_class).to respond_to :instances
     end
 
@@ -165,10 +165,27 @@ _EOF_
 #subsysname:synonym:cmdargs:path:uid:auditid:standin:standout:standerr:action:multi:contact:svrkey:svrmtype:priority:signorm:sigforce:display:waittime:grpname:
 myservice::--no-daemonize:/usr/sbin/puppetd:0:0:/dev/null:/var/log/puppet.log:/var/log/puppet.log:-O:-Q:-S:0:0:20:15:9:-d:20::"
 _EOF_
+
       @provider.expects(:execute).with(['/usr/bin/lssrc', '-Ss', "myservice"]).returns sample_output
+      @provider.expects(:status).returns 'stopped'
       @provider.expects(:execute).with(['/usr/bin/stopsrc', '-s', "myservice"], {:override_locale => false, :squelch => false, :combine => true, :failonfail => true})
       @provider.expects(:execute).with(['/usr/bin/startsrc', '-s', "myservice"], {:override_locale => false, :squelch => false, :combine => true, :failonfail => true})
       @provider.restart
     end
+
+    it "should warn if timeout occurs while stopping the service" do
+      sample_output =  <<_EOF_
+#subsysname:synonym:cmdargs:path:uid:auditid:standin:standout:standerr:action:multi:contact:svrkey:svrmtype:priority:signorm:sigforce:display:waittime:grpname:
+myservice::--no-daemonize:/usr/sbin/puppetd:0:0:/dev/null:/var/log/puppet.log:/var/log/puppet.log:-O:-Q:-S:0:0:20:15:9:-d:20::"
+_EOF_
+
+      @provider.expects(:execute).with(['/usr/bin/lssrc', '-Ss', "myservice"]).returns sample_output
+      Timeout.expects(:timeout).with(30).raises(Timeout::Error)
+      @provider.expects(:execute).with(['/usr/bin/stopsrc', '-s', "myservice"], {:override_locale => false, :squelch => false, :combine => true, :failonfail => true})
+      @provider.expects(:execute).with(['/usr/bin/startsrc', '-s', "myservice"], {:override_locale => false, :squelch => false, :combine => true, :failonfail => true})
+      Puppet.expects(:warning).with('Timed out waiting for myservice to stop')
+      @provider.restart
+    end
+
   end
 end

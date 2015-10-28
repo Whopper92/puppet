@@ -1,3 +1,5 @@
+require 'timeout'
+
 # AIX System Resource controller (SRC)
 Puppet::Type.type(:service).provide :src, :parent => :base do
 
@@ -61,6 +63,23 @@ Puppet::Type.type(:service).provide :src, :parent => :base do
 
   def disable
     rmitab(@resource[:name])
+  end
+
+  def stop
+    ucommand(:stop)
+
+    # Wait for the service to finish stopping
+    begin
+      Timeout.timeout(60) do
+        loop do
+          status = self.status
+          break if status == :stopped
+          sleep(1)
+        end
+      end
+    rescue Timeout::Error
+      raise Puppet::Error.new("Timed out waiting for #{@resource[:name]} to stop")
+    end
   end
 
   def restart

@@ -15,6 +15,7 @@ Puppet::Type.type(:service).provide :debian, :parent => :init do
   # https://projects.puppetlabs.com/issues/2538
   # is resolved.
   commands :invoke_rc => "/usr/sbin/invoke-rc.d"
+  commands :service_cmd => "/usr/sbin/service"
 
   defaultfor :operatingsystem => :cumuluslinux
   defaultfor :operatingsystem => :debian, :operatingsystemmajrelease => ['5','6','7']
@@ -64,24 +65,26 @@ Puppet::Type.type(:service).provide :debian, :parent => :init do
     update_rc @resource[:name], "defaults"
   end
 
-  def statuscmd
-    os = Facter.value(:operatingsystem).downcase
+ # The start, stop, restart and status command use service
+ # this makes sure that these commands work with whatever init
+ # system is installed
+ def startcmd
+   [service, @resource[:name], :start]
+ end
 
-    if os == 'debian'
-      majversion = Facter.value(:operatingsystemmajrelease).to_i
-    else
-      majversion = Facter.value(:operatingsystemmajrelease).split('.')[0].to_i
-    end
+  # The stop command is just the init script with 'stop'.
+ def stopcmd
+   [service, @resource[:name], :stop]
+ end
 
+ def restartcmd
+   (@resource[:hasrestart] == :true) && [service, @resource[:name], :restart]
+ end
 
-    if ((os == 'debian' && majversion >= 8) || (os == 'ubuntu' && majversion >= 15))
-      # SysVInit scripts will always return '0' for status when the service is masked,
-      # even if the service is actually stopped. Use the SysVInit-Systemd compatibility
-      # layer to determine the actual status. This is only necessary when the SysVInit
-      # version of a service is queried. I.e, 'ntp' instead of 'ntp.service'.
-      (@resource[:hasstatus] == :true) && ["systemctl", "is-active", @resource[:name]]
-    else
-      super
-    end
-  end
+ # If it was specified that the init script has a 'status' command, then
+ # we just return that; otherwise, we return false, which causes it to
+ # fallback to other mechanisms.
+ def statuscmd
+   (@resource[:hasstatus] == :true) && [service, @resource[:name], :status]
+ end
 end

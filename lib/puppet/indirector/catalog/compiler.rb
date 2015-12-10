@@ -34,6 +34,8 @@ class Puppet::Resource::Catalog::Compiler < Puppet::Indirector::Code
       options = {
         :environment => request.environment,
         :transaction_uuid => request.options[:transaction_uuid],
+        :catalog_uuid => request.options[:catalog_uuid],
+        :catalog_uuid => request.options[:catalog_uuid],
       }
 
       Puppet::Node::Facts.indirection.save(facts, nil, options)
@@ -102,12 +104,13 @@ class Puppet::Resource::Catalog::Compiler < Puppet::Indirector::Code
   end
 
   # Turn our host name into a node object.
-  def find_node(name, environment, transaction_uuid, configured_environment)
+  def find_node(name, environment, transaction_uuid, catalog_id, configured_environment)
     Puppet::Util::Profiler.profile("Found node information", [:compiler, :find_node]) do
       node = nil
       begin
         node = Puppet::Node.indirection.find(name, :environment => environment,
                                              :transaction_uuid => transaction_uuid,
+                                             :catalog_uuid => catalog_uuid,
                                              :configured_environment => configured_environment)
       rescue => detail
         message = "Failed when searching for node #{name}: #{detail}"
@@ -143,7 +146,7 @@ class Puppet::Resource::Catalog::Compiler < Puppet::Indirector::Code
     # node's catalog with only one certificate and a modification to auth.conf
     # If no key is provided we can only compile the currently connected node.
     name = request.key || request.node
-    if node = find_node(name, request.environment, request.options[:transaction_uuid], request.options[:configured_environment])
+    if node = find_node(name, request.environment, request.options[:transaction_uuid], request.options[:catalog_uuid], request.options[:configured_environment])
       return node
     end
 

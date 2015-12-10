@@ -49,6 +49,7 @@ class Puppet::Configurer
     @splayed = false
     @environment = Puppet[:environment]
     @transaction_uuid = SecureRandom.uuid
+    @catalog_uuid = SecureRandom.uuid
     @handler = Puppet::Configurer::PluginHandler.new(factory)
   end
 
@@ -140,10 +141,10 @@ class Puppet::Configurer
 
   def run_internal(options)
     # We create the report pre-populated with default settings for
-    # environment and transaction_uuid very early, this is to ensure
+    # environment, transaction_uuid, and catalog_uuid very early, this is to ensure
     # they are sent regardless of any catalog compilation failures or
     # exceptions.
-    options[:report] ||= Puppet::Transaction::Report.new("apply", nil, @environment, @transaction_uuid)
+    options[:report] ||= Puppet::Transaction::Report.new("apply", nil, @environment, @transaction_uuid, @catalog_uuid)
     report = options[:report]
     init_storage
 
@@ -164,6 +165,7 @@ class Puppet::Configurer
               :configured_environment => configured_environment,
               :ignore_cache => true,
               :transaction_uuid => @transaction_uuid,
+              :catalog_uuid => @catalog_uuid,
               :fail_on_404 => true)
 
             # If we have deserialized a node from a rest call, we want to set
@@ -201,6 +203,7 @@ class Puppet::Configurer
 
       query_options = get_facts(options) unless query_options
       query_options[:transaction_uuid] = @transaction_uuid
+      query_options[:catalog_uuid] = @catalog_uuid
       query_options[:configured_environment] = configured_environment
 
       unless catalog = prepare_and_retrieve_catalog(options, query_options)
@@ -222,6 +225,7 @@ class Puppet::Configurer
 
         query_options = get_facts(options)
         query_options[:transaction_uuid] = @transaction_uuid
+        query_options[:catalog_uuid] = @catalog_uuid
         query_options[:configured_environment] = configured_environment
 
         return nil unless catalog = prepare_and_retrieve_catalog(options, query_options)

@@ -48,6 +48,10 @@ class Puppet::Transaction::Report
   # @return [String] uuid
   attr_accessor :transaction_uuid
 
+  # An Agent generated catalog uuid, useful for ???
+  # @return [String] uuid
+  attr_accessor :catalog_uuid
+
   # The host name for which the report is generated
   # @return [String] the host name
   attr_accessor :host
@@ -164,7 +168,7 @@ class Puppet::Transaction::Report
   end
 
   # @api private
-  def initialize(kind, configuration_version=nil, environment=nil, transaction_uuid=nil)
+  def initialize(kind, configuration_version=nil, environment=nil, transaction_uuid=nil, catalog_uuid=nil)
     @metrics = {}
     @logs = []
     @resource_statuses = {}
@@ -176,6 +180,7 @@ class Puppet::Transaction::Report
     @puppet_version = Puppet.version
     @configuration_version = configuration_version
     @transaction_uuid = transaction_uuid
+    @catalog_uuid = catalog_uuid
     @environment = environment
     @status = 'failed' # assume failed until the report is finalized
   end
@@ -186,6 +191,7 @@ class Puppet::Transaction::Report
     @report_format = data['report_format']
     @configuration_version = data['configuration_version']
     @transaction_uuid = data['transaction_uuid']
+    @catalog_uuid = data['catalog_uuid']
     @environment = data['environment']
     @status = data['status']
     @host = data['host']
@@ -221,6 +227,7 @@ class Puppet::Transaction::Report
       'time' => @time.iso8601(9),
       'configuration_version' => @configuration_version,
       'transaction_uuid' => @transaction_uuid,
+      'catalog_uuid' => @catalog_uuid,
       'report_format' => @report_format,
       'puppet_version' => @puppet_version,
       'kind' => @kind,

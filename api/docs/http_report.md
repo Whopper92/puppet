@@ -109,7 +109,8 @@ example is formatted for readability)
          "skipped"=>false,
          "change_count"=>0,
          "out_of_sync_count"=>0,
-         "events"=>[]}}}
+         "events"=>[]}},
+      "cached_catalog_status"=> "unused"}
 
 Schema
 ------

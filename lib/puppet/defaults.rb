@@ -1570,7 +1570,11 @@ EOT
     :pluginsync => {
       :default    => true,
       :type       => :boolean,
-      :desc       => "Whether plugins should be synced with the central server.",
+      :desc       => "Whether plugins should be synced with the central server. This setting is deprecated,
+        as the decision to sync plugins with the central server is now based on whether a cached catalog is
+        being applied or not. If a cached catalog is being used, plugins will not be synced to ensure that
+        the same set of plugins are used that existed when the catalog was originally compiled.",
+      :deprecated => :completely,
     },
 
     :pluginsignore => {

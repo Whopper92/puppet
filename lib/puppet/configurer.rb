@@ -19,7 +19,20 @@ class Puppet::Configurer
 
   # Provide more helpful strings to the logging that the Agent does
   def self.to_s
+    require 'pry' ; binding.pry
     "Puppet configuration client"
+  end
+
+  def self.should_pluginsync?
+    if !(Puppet.settings.set_by_cli?(:pluginsync) || Puppet.settings.set_by_config?(:pluginsync))
+      if Puppet[:use_cached_catalog]
+        false
+      else
+        true
+      end
+    else
+      Puppet[:pluginsync]
+    end
   end
 
   def execute_postrun_command
@@ -44,9 +57,10 @@ class Puppet::Configurer
     end
   end
 
-  def initialize(factory = Puppet::Configurer::DownloaderFactory.new)
+  def initialize(factory = Puppet::Configurer::DownloaderFactory.new, should_pluginsync = nil)
     @running = false
     @splayed = false
+    @should_pluginsync = should_pluginsync
     @cached_catalog_status = 'not_used'
     @environment = Puppet[:environment]
     @transaction_uuid = SecureRandom.uuid
@@ -55,9 +69,12 @@ class Puppet::Configurer
 
   # Get the remote catalog, yo.  Returns nil if no catalog can be found.
   def retrieve_catalog(query_options)
+    require 'pry' ; binding.pry
+    
     query_options ||= {}
     if (Puppet[:use_cached_catalog] && result = retrieve_catalog_from_cache(query_options))
       @cached_catalog_status = 'explicitly_requested'
+
     else
       result = retrieve_new_catalog(query_options)
 
@@ -65,6 +82,13 @@ class Puppet::Configurer
         if !Puppet[:usecacheonfailure]
           Puppet.warning "Not using cache on failed catalog"
           return nil
+        end
+
+        # If we failed to retrieve a new catalog, turn pluginsync on
+        # unless it has been explicitly disabled. Note: Once the pluginsync
+        # setting has been fully deprecated and removed, remove this check.
+        if !(Puppet.settings.set_by_cli?(:pluginsync) || Puppet.settings.set_by_config(:pluginsync))
+          @should_pluginsync = true
         end
 
         result = retrieve_catalog_from_cache(query_options)
@@ -139,6 +163,7 @@ class Puppet::Configurer
   # This just passes any options on to the catalog,
   # which accepts :tags and :ignoreschedules.
   def run(options = {})
+    require 'pry' ; binding.pry
     pool = Puppet::Network::HTTP::Pool.new(Puppet[:http_keepalive_timeout])
     begin
       Puppet.override(:http_pool => pool) do

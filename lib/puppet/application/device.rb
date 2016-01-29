@@ -198,8 +198,9 @@ Licensed under the Apache 2.0 License
         setup_host
 
         require 'puppet/configurer'
-        configurer = Puppet::Configurer.new
-        configurer.run(:network_device => true, :pluginsync => Puppet::Configurer.should_pluginsync?)
+        should_pluginsync = Puppet::Configurer.should_pluginsync?
+        configurer = Puppet::Configurer.new(Puppet::Configurer::DownloaderFactory.new, should_pluginsync)
+        configurer.run(:network_device => true, :pluginsync => should_pluginsync)
       rescue => detail
         Puppet.log_exception(detail)
         # If we rescued an error, then we return 1 as the exit code

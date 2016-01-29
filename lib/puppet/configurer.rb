@@ -19,7 +19,6 @@ class Puppet::Configurer
 
   # Provide more helpful strings to the logging that the Agent does
   def self.to_s
-    require 'pry' ; binding.pry
     "Puppet configuration client"
   end
 
@@ -57,10 +56,10 @@ class Puppet::Configurer
     end
   end
 
-  def initialize(factory = Puppet::Configurer::DownloaderFactory.new, should_pluginsync = nil)
+  def initialize(factory = Puppet::Configurer::DownloaderFactory.new)
+    require 'pry' ; binding.pry
     @running = false
     @splayed = false
-    @should_pluginsync = should_pluginsync
     @cached_catalog_status = 'not_used'
     @environment = Puppet[:environment]
     @transaction_uuid = SecureRandom.uuid
@@ -69,13 +68,21 @@ class Puppet::Configurer
 
   # Get the remote catalog, yo.  Returns nil if no catalog can be found.
   def retrieve_catalog(query_options)
-    require 'pry' ; binding.pry
-    
     query_options ||= {}
-    if (Puppet[:use_cached_catalog] && result = retrieve_catalog_from_cache(query_options))
-      @cached_catalog_status = 'explicitly_requested'
 
+    if Puppet[:use_cached_catalog]
+      if result = retrieve_catalog_from_cache(query_options)
+        @cached_catalog_status = 'explicitly_requested'
+      else
+        if !(Puppet.settings.set_by_cli?(:pluginsync) || Puppet.settings.set_by_config?(:pluginsync))
+					# @should_pluginsync = true
+					# TODO: pluginsync here?
+        end
+        
+        result = retrieve_new_catalog(query_options)
+      end
     else
+			#
       result = retrieve_new_catalog(query_options)
 
       if !result
@@ -84,13 +91,9 @@ class Puppet::Configurer
           return nil
         end
 
-        # If we failed to retrieve a new catalog, turn pluginsync on
-        # unless it has been explicitly disabled. Note: Once the pluginsync
-        # setting has been fully deprecated and removed, remove this check.
-        if !(Puppet.settings.set_by_cli?(:pluginsync) || Puppet.settings.set_by_config(:pluginsync))
-          @should_pluginsync = true
+        if !(Puppet.settings.set_by_cli?(:pluginsync) || Puppet.settings.set_by_config?(:pluginsync))
+          @should_pluginsync = false
         end
-
         result = retrieve_catalog_from_cache(query_options)
 
         if result
@@ -162,8 +165,9 @@ class Puppet::Configurer
   # The code that actually runs the catalog.
   # This just passes any options on to the catalog,
   # which accepts :tags and :ignoreschedules.
+
+  # TODO: pass catalog in here when cached_catalog is true
   def run(options = {})
-    require 'pry' ; binding.pry
     pool = Puppet::Network::HTTP::Pool.new(Puppet[:http_keepalive_timeout])
     begin
       Puppet.override(:http_pool => pool) do
@@ -184,6 +188,19 @@ class Puppet::Configurer
     init_storage
 
     Puppet::Util::Log.newdestination(report)
+
+		# TODO: Here we will: check if use_cached_catalog is on. IF so, try to get the cached catalog and assign options[:catalog] to it.
+		# If it exists, we also need to change @environment to the catalog's environment. Also deal with pluginsync
+    require 'pry' ; binding.pry
+		if Puppet[:use_cached_catalog]
+      catalog = retrieve_catalog_from_cache({:transaction_uuid => @transaction_uuid})
+      if catalog
+        options[:catalog] = catalog
+        options[:pluginsync] = false
+				@environment = catalog.environment
+        @cached_catalog_status = 'explicitly_requested'
+	    end
+    end
 
     begin
       unless Puppet[:node_name_fact].empty?
@@ -236,11 +253,14 @@ class Puppet::Configurer
       Puppet.push_context({:current_environment => local_node_environment}, "Local node environment for configurer transaction")
 
       query_options = get_facts(options) unless query_options
+
       query_options[:transaction_uuid] = @transaction_uuid
       query_options[:configured_environment] = configured_environment
 
-      unless catalog = prepare_and_retrieve_catalog(options, query_options)
-        return nil
+      if !catalog
+        unless catalog = prepare_and_retrieve_catalog(options, query_options)
+          return nil
+        end
       end
 
       # Here we set the local environment based on what we get from the
@@ -336,6 +356,7 @@ class Puppet::Configurer
   end
 
   def retrieve_new_catalog(query_options)
+    require 'pry' ; binding.pry
     result = nil
     @duration = thinmark do
       result = Puppet::Resource::Catalog.indirection.find(Puppet[:node_name_value],

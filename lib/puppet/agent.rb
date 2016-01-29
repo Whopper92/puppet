@@ -88,7 +88,7 @@ class Puppet::Agent
 
   # Create and yield a client instance, keeping a reference
   # to it during the yield.
-  def with_client
+  def with_client()
     begin
       @client = client_class.new
     rescue StandardError => detail

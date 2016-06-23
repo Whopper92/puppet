@@ -71,6 +71,7 @@ Puppet::Type.type(:service).provide :systemd, :parent => :base do
   end
 
   def enabled?
+    Puppet.notice("hello world!")
     output = cached_enabled?
     code = $CHILD_STATUS.exitstatus
 

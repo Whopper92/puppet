@@ -1,1 +1,0 @@
-Integer.new(34)

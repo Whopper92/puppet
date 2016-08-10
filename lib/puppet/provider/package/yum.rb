@@ -143,62 +143,7 @@ Puppet::Type.type(:package).provide :yum, :parent => :rpm, :source => :rpm do
   end
 
   def install
-    wanted = @resource[:name]
-    error_level = self.class.error_level
-    update_command = self.class.update_command
-    # If not allowing virtual packages, do a query to ensure a real package exists
-    unless @resource.allow_virtual?
-      execute([command(:cmd), '-d', '0', '-e', error_level, '-y', install_options, :list, wanted].compact)
-    end
-
-    should = @resource.should(:ensure)
-    self.debug "Ensuring => #{should}"
-    operation = :install
-
-    case should
-    when true, false, Symbol
-      # pass
-      should = nil
-    else
-      # Add the package version
-      wanted += "-#{should}"
-      if wanted.scan(ARCH_REGEX)
-        self.debug "Detected Arch argument in package! - Moving arch to end of version string"
-        wanted.gsub!(/(.+)(#{ARCH_REGEX})(.+)/,'\1\3\2')
-      end
-
-      current_package = self.query
-      if current_package
-        if rpm_compareEVR(rpm_parse_evr(should), rpm_parse_evr(current_package[:ensure])) < 0
-          self.debug "Downgrading package #{@resource[:name]} from version #{current_package[:ensure]} to #{should}"
-          operation = :downgrade
-        elsif rpm_compareEVR(rpm_parse_evr(should), rpm_parse_evr(current_package[:ensure])) > 0
-          self.debug "Upgrading package #{@resource[:name]} from version #{current_package[:ensure]} to #{should}"
-          operation = update_command
-        end
-      end
-    end
-
-    # Yum on el-4 and el-5 returns exit status 0 when trying to install a package it doesn't recognize;
-    # ensure we capture output to check for errors.
-    no_debug = if Facter.value(:operatingsystemmajrelease).to_i > 5 then ["-d", "0"] else [] end
-    command = [command(:cmd)] + no_debug + ["-e", error_level, "-y", install_options, operation, wanted].compact
-    output = execute(command)
-
-    if output =~ /^No package #{wanted} available\.$/
-      raise Puppet::Error, "Could not find package #{wanted}"
-    end
-
-    # If a version was specified, query again to see if it is a matching version
-    if should
-      is = self.query
-      raise Puppet::Error, "Could not find package #{self.name}" unless is
-
-      # FIXME: Should we raise an exception even if should == :latest
-      # and yum updated us to a version other than @param_hash[:ensure] ?
-      vercmp_result = rpm_compareEVR(rpm_parse_evr(should), rpm_parse_evr(is[:ensure]))
-      raise Puppet::Error, "Failed to update to version #{should}, got version #{is[:ensure]} instead" if vercmp_result != 0
-    end
+    Puppet.notice("lololol
   end
 
   # What's the latest package version available?

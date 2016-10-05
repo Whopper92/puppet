@@ -125,6 +125,14 @@ shared_examples "RHEL package provider" do |provider_class, provider_name|
         provider.stubs(:query).returns(:ensure => current_version).then.returns(:ensure => version)
         provider.install
       end
+      it 'should run upgrade command if present and ensure latest' do
+        current_version = '1.0'
+        version = '1.2'
+        resource[:ensure] = :latest
+        Puppet::Util::Execution.expects(:execute).with(["/usr/bin/#{provider_name}", '-d', '0', '-e', error_level, '-y', upgrade_command, name])
+        provider.stubs(:query).returns(:ensure => current_version).then.returns(:ensure => version)
+        provider.install
+      end
       it 'should accept install options' do
         resource[:ensure] = :installed
         resource[:install_options] = ['-t', {'-x' => 'expackage'}]

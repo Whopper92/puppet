@@ -156,6 +156,11 @@ Puppet::Type.type(:package).provide :yum, :parent => :rpm, :source => :rpm do
     operation = :install
 
     case should
+    when :latest
+      # use update_command when using latest for updating packages
+      operation = update_command
+      self.debug "Ensuring latest, so using #{operation}"
+      should = nil
     when true, false, Symbol
       # pass
       should = nil

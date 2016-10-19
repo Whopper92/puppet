@@ -142,7 +142,7 @@ Puppet::Type.type(:package).provide :yum, :parent => :rpm, :source => :rpm do
     'update'
   end
 
-  def install
+  def install 
     wanted = @resource[:name]
     error_level = self.class.error_level
     update_command = self.class.update_command
@@ -151,17 +151,18 @@ Puppet::Type.type(:package).provide :yum, :parent => :rpm, :source => :rpm do
       execute([command(:cmd), '-d', '0', '-e', error_level, '-y', install_options, :list, wanted].compact)
     end
 
+    current_package = self.query
+
     should = @resource.should(:ensure)
     self.debug "Ensuring => #{should}"
     operation = :install
 
-    case should
-    when :latest
+    if should == :latest && current_package
       # use update_command when using latest for updating packages
       operation = update_command
       self.debug "Ensuring latest, so using #{operation}"
       should = nil
-    when true, false, Symbol
+    elsif should == true || should == false || should.is_a?(Symbol)
       # pass
       should = nil
     else
@@ -172,7 +173,6 @@ Puppet::Type.type(:package).provide :yum, :parent => :rpm, :source => :rpm do
         wanted.gsub!(/(.+)(#{ARCH_REGEX})(.+)/,'\1\3\2')
       end
 
-      current_package = self.query
       if current_package
         if rpm_compareEVR(rpm_parse_evr(should), rpm_parse_evr(current_package[:ensure])) < 0
           self.debug "Downgrading package #{@resource[:name]} from version #{current_package[:ensure]} to #{should}"
